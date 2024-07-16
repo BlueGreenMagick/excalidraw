@@ -548,13 +548,12 @@ const drawElementFromCanvas = (
     const shiftY = boundTextCy + appState.scrollY;
     const rectHalfWidth = boundTextElement.width / 2 + BOUND_TEXT_PADDING;
     const rectHalfHeight = boundTextElement.height / 2 + BOUND_TEXT_PADDING;
-    tempCanvasContext.translate(shiftX, shiftY);
     // Clear the bound text area
     tempCanvasContext.clearRect(
       shiftX - rectHalfWidth,
-      shiftX - rectHalfHeight,
-      shiftX + rectHalfWidth,
-      shiftX + rectHalfHeight,
+      shiftY - rectHalfHeight,
+      rectHalfWidth * 2,
+      rectHalfHeight * 2,
     );
 
     context.scale(1 / scale, 1 / scale);
