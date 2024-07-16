@@ -487,13 +487,10 @@ const _drawElementFromCanvas = (
     "scale" in elementWithCanvas.element &&
     !isPendingImageElement(element, renderConfig)
   ) {
-    console.log("Yesscale")
     context.scale(
       elementWithCanvas.element.scale[0],
       elementWithCanvas.element.scale[1],
     );
-  } else {
-    console.log("noscale")
   }
 
   // revert afterwards we don't have account for it during drawing
@@ -511,7 +508,6 @@ const _drawElementFromCanvas = (
 
   context.restore();
 };
-
 
 const drawElementFromCanvas = (
   elementWithCanvas: ExcalidrawElementWithCanvas,
