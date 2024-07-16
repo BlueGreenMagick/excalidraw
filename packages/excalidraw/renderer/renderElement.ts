@@ -487,12 +487,15 @@ const drawElementFromCanvas = (
     // Take max dimensions of arrow canvas so that when canvas is rotated
     // the arrow doesn't get clipped
     const maxDim = Math.max(distance(x1, x2), distance(y1, y2));
-    tempCanvas.width =
+    const originalLength =
       maxDim * window.devicePixelRatio * zoom +
       padding * elementWithCanvas.scale * 10;
-    tempCanvas.height =
-      maxDim * window.devicePixelRatio * zoom +
-      padding * elementWithCanvas.scale * 10;
+    const viewportDiagLength = Math.sqrt(
+      appState.width * appState.width + appState.height * appState.height,
+    );
+    const cappedLength = Math.min(originalLength, viewportDiagLength);
+    tempCanvas.width = cappedLength;
+    tempCanvas.height = cappedLength;
     const offsetX = (tempCanvas.width - elementWithCanvas.canvas!.width) / 2;
     const offsetY = (tempCanvas.height - elementWithCanvas.canvas!.height) / 2;
 
