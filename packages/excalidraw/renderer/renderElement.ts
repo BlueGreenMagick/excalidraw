@@ -461,7 +461,7 @@ const generateElementWithCanvas = (
   return prevElementWithCanvas;
 };
 
-const drawElementFromCanvas = (
+const _drawElementFromCanvas = (
   elementWithCanvas: ExcalidrawElementWithCanvas,
   context: CanvasRenderingContext2D,
   renderConfig: StaticCanvasRenderConfig,
@@ -470,7 +470,6 @@ const drawElementFromCanvas = (
 ) => {
   const element = elementWithCanvas.element;
   const padding = getCanvasPadding(element);
-  const zoom = elementWithCanvas.scale;
   const [x1, y1, x2, y2] = getElementAbsoluteCoords(element, allElementsMap);
   const cx = ((x1 + x2) / 2 + appState.scrollX) * window.devicePixelRatio;
   const cy = ((y1 + y2) / 2 + appState.scrollY) * window.devicePixelRatio;
@@ -478,136 +477,124 @@ const drawElementFromCanvas = (
   context.save();
   context.scale(1 / window.devicePixelRatio, 1 / window.devicePixelRatio);
 
+  // we translate context to element center so that rotation and scale
+  // originates from the element center
+  context.translate(cx, cy);
+
+  context.rotate(element.angle);
+
+  if (
+    "scale" in elementWithCanvas.element &&
+    !isPendingImageElement(element, renderConfig)
+  ) {
+    console.log("Yesscale")
+    context.scale(
+      elementWithCanvas.element.scale[0],
+      elementWithCanvas.element.scale[1],
+    );
+  } else {
+    console.log("noscale")
+  }
+
+  // revert afterwards we don't have account for it during drawing
+  context.translate(-cx, -cy);
+
+  context.drawImage(
+    elementWithCanvas.canvas!,
+    (x1 + appState.scrollX) * window.devicePixelRatio -
+      (padding * elementWithCanvas.scale) / elementWithCanvas.scale,
+    (y1 + appState.scrollY) * window.devicePixelRatio -
+      (padding * elementWithCanvas.scale) / elementWithCanvas.scale,
+    elementWithCanvas.canvas!.width / elementWithCanvas.scale,
+    elementWithCanvas.canvas!.height / elementWithCanvas.scale,
+  );
+
+  context.restore();
+};
+
+
+const drawElementFromCanvas = (
+  elementWithCanvas: ExcalidrawElementWithCanvas,
+  context: CanvasRenderingContext2D,
+  renderConfig: StaticCanvasRenderConfig,
+  appState: StaticCanvasAppState,
+  allElementsMap: NonDeletedSceneElementsMap,
+) => {
+  const element = elementWithCanvas.element;
+
   const boundTextElement = getBoundTextElement(element, allElementsMap);
+  const isLabelledArrowElement = isArrowElement(element) && boundTextElement;
 
-  if (isArrowElement(element) && boundTextElement) {
+  if (isLabelledArrowElement) {
+    console.log("label")
     const tempCanvas = document.createElement("canvas");
+    window.tempCanvas = tempCanvas
     const tempCanvasContext = tempCanvas.getContext("2d")!;
+    tempCanvas.width = appState.width * window.devicePixelRatio;
+    tempCanvas.height = appState.height * window.devicePixelRatio;
+    const scale = appState.zoom.value * window.devicePixelRatio;
+    tempCanvasContext.setTransform(1, 0, 0, 1, 0, 0);
+    tempCanvasContext.scale(scale, scale);
 
-    // Take max dimensions of arrow canvas so that when canvas is rotated
-    // the arrow doesn't get clipped
-    const maxDim = Math.max(distance(x1, x2), distance(y1, y2));
-    const originalLength =
-      maxDim * window.devicePixelRatio * zoom +
-      padding * elementWithCanvas.scale * 10;
-    const viewportDiagLength =
-      Math.sqrt(
-        appState.width * appState.width + appState.height * appState.height,
-      ) * window.devicePixelRatio;
-    const cappedLength = Math.min(originalLength, viewportDiagLength);
-    tempCanvas.width = cappedLength;
-    tempCanvas.height = cappedLength;
-    const offsetX = (tempCanvas.width - elementWithCanvas.canvas!.width) / 2;
-    const offsetY = (tempCanvas.height - elementWithCanvas.canvas!.height) / 2;
-
-    tempCanvasContext.translate(tempCanvas.width / 2, tempCanvas.height / 2);
-    tempCanvasContext.rotate(element.angle);
-
-    tempCanvasContext.drawImage(
-      elementWithCanvas.canvas!,
-      -elementWithCanvas.canvas.width / 2,
-      -elementWithCanvas.canvas.height / 2,
-      elementWithCanvas.canvas.width,
-      elementWithCanvas.canvas.height,
+    _drawElementFromCanvas(
+      elementWithCanvas,
+      tempCanvasContext,
+      renderConfig,
+      appState,
+      allElementsMap,
     );
 
+    
+    const [x1, y1, x2, y2] = getElementAbsoluteCoords(element, allElementsMap);
     const [, , , , boundTextCx, boundTextCy] = getElementAbsoluteCoords(
       boundTextElement,
       allElementsMap,
     );
 
-    tempCanvasContext.rotate(-element.angle);
-
     // Shift the canvas to the center of the bound text element
-    const shiftX =
-      tempCanvas.width / 2 -
-      (boundTextCx - x1) * window.devicePixelRatio * zoom -
-      offsetX -
-      padding * zoom;
-
-    const shiftY =
-      tempCanvas.height / 2 -
-      (boundTextCy - y1) * window.devicePixelRatio * zoom -
-      offsetY -
-      padding * zoom;
-    tempCanvasContext.translate(-shiftX, -shiftY);
+    const shiftX = (boundTextCx + appState.scrollX);
+    const shiftY = (boundTextCy + appState.scrollY);
+    tempCanvasContext.translate(shiftX, shiftY);
     // Clear the bound text area
     tempCanvasContext.clearRect(
-      -(boundTextElement.width / 2 + BOUND_TEXT_PADDING) *
-        window.devicePixelRatio *
-        zoom,
-      -(boundTextElement.height / 2 + BOUND_TEXT_PADDING) *
-        window.devicePixelRatio *
-        zoom,
-      (boundTextElement.width + BOUND_TEXT_PADDING * 2) *
-        window.devicePixelRatio *
-        zoom,
-      (boundTextElement.height + BOUND_TEXT_PADDING * 2) *
-        window.devicePixelRatio *
-        zoom,
+      -(boundTextElement.width / 2 + BOUND_TEXT_PADDING),
+      -(boundTextElement.height / 2 + BOUND_TEXT_PADDING),
+      (boundTextElement.width + BOUND_TEXT_PADDING * 2),
+      (boundTextElement.height + BOUND_TEXT_PADDING * 2),
     );
-
-    context.translate(cx, cy);
-    context.drawImage(
-      tempCanvas,
-      (-(x2 - x1) / 2) * window.devicePixelRatio - offsetX / zoom - padding,
-      (-(y2 - y1) / 2) * window.devicePixelRatio - offsetY / zoom - padding,
-      tempCanvas.width / zoom,
-      tempCanvas.height / zoom,
-    );
+    
+    context.scale(1 / scale, 1 / scale);
+    context.drawImage(tempCanvas, 0, 0, tempCanvas.width, tempCanvas.height);
+    context.scale(1 * scale, 1 * scale);
   } else {
-    // we translate context to element center so that rotation and scale
-    // originates from the element center
-    context.translate(cx, cy);
-
-    context.rotate(element.angle);
-
-    if (
-      "scale" in elementWithCanvas.element &&
-      !isPendingImageElement(element, renderConfig)
-    ) {
-      context.scale(
-        elementWithCanvas.element.scale[0],
-        elementWithCanvas.element.scale[1],
-      );
-    }
-
-    // revert afterwards we don't have account for it during drawing
-    context.translate(-cx, -cy);
-
-    context.drawImage(
-      elementWithCanvas.canvas!,
-      (x1 + appState.scrollX) * window.devicePixelRatio -
-        (padding * elementWithCanvas.scale) / elementWithCanvas.scale,
-      (y1 + appState.scrollY) * window.devicePixelRatio -
-        (padding * elementWithCanvas.scale) / elementWithCanvas.scale,
-      elementWithCanvas.canvas!.width / elementWithCanvas.scale,
-      elementWithCanvas.canvas!.height / elementWithCanvas.scale,
+    _drawElementFromCanvas(
+      elementWithCanvas,
+      context,
+      renderConfig,
+      appState,
+      allElementsMap,
     );
-
-    if (
-      import.meta.env.VITE_APP_DEBUG_ENABLE_TEXT_CONTAINER_BOUNDING_BOX ===
-        "true" &&
-      hasBoundTextElement(element)
-    ) {
-      const textElement = getBoundTextElement(
-        element,
-        allElementsMap,
-      ) as ExcalidrawTextElementWithContainer;
-      const coords = getContainerCoords(element);
-      context.strokeStyle = "#c92a2a";
-      context.lineWidth = 3;
-      context.strokeRect(
-        (coords.x + appState.scrollX) * window.devicePixelRatio,
-        (coords.y + appState.scrollY) * window.devicePixelRatio,
-        getBoundTextMaxWidth(element, textElement) * window.devicePixelRatio,
-        getBoundTextMaxHeight(element, textElement) * window.devicePixelRatio,
-      );
-    }
   }
-  context.restore();
 
-  // Clear the nested element we appended to the DOM
+  if (
+    import.meta.env.VITE_APP_DEBUG_ENABLE_TEXT_CONTAINER_BOUNDING_BOX ===
+      "true" &&
+    hasBoundTextElement(element)
+  ) {
+    const textElement = getBoundTextElement(
+      element,
+      allElementsMap,
+    ) as ExcalidrawTextElementWithContainer;
+    const coords = getContainerCoords(element);
+    context.strokeStyle = "#c92a2a";
+    context.lineWidth = 3;
+    context.strokeRect(
+      (coords.x + appState.scrollX) * window.devicePixelRatio,
+      (coords.y + appState.scrollY) * window.devicePixelRatio,
+      getBoundTextMaxWidth(element, textElement) * window.devicePixelRatio,
+      getBoundTextMaxHeight(element, textElement) * window.devicePixelRatio,
+    );
+  }
 };
 
 export const renderSelectionElement = (
