@@ -490,9 +490,10 @@ const drawElementFromCanvas = (
     const originalLength =
       maxDim * window.devicePixelRatio * zoom +
       padding * elementWithCanvas.scale * 10;
-    const viewportDiagLength = Math.sqrt(
-      appState.width * appState.width + appState.height * appState.height,
-    );
+    const viewportDiagLength =
+      Math.sqrt(
+        appState.width * appState.width + appState.height * appState.height,
+      ) * window.devicePixelRatio;
     const cappedLength = Math.min(originalLength, viewportDiagLength);
     tempCanvas.width = cappedLength;
     tempCanvas.height = cappedLength;
