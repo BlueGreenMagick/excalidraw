@@ -526,9 +526,7 @@ const drawElementFromCanvas = (
   const isLabelledArrowElement = isArrowElement(element) && boundTextElement;
 
   if (isLabelledArrowElement) {
-    console.log("label")
     const tempCanvas = document.createElement("canvas");
-    window.tempCanvas = tempCanvas
     const tempCanvasContext = tempCanvas.getContext("2d")!;
     tempCanvas.width = appState.width * window.devicePixelRatio;
     tempCanvas.height = appState.height * window.devicePixelRatio;
@@ -544,25 +542,25 @@ const drawElementFromCanvas = (
       allElementsMap,
     );
 
-    
-    const [x1, y1, x2, y2] = getElementAbsoluteCoords(element, allElementsMap);
     const [, , , , boundTextCx, boundTextCy] = getElementAbsoluteCoords(
       boundTextElement,
       allElementsMap,
     );
 
     // Shift the canvas to the center of the bound text element
-    const shiftX = (boundTextCx + appState.scrollX);
-    const shiftY = (boundTextCy + appState.scrollY);
+    const shiftX = boundTextCx + appState.scrollX;
+    const shiftY = boundTextCy + appState.scrollY;
+    const rectHalfWidth = boundTextElement.width / 2 + BOUND_TEXT_PADDING;
+    const rectHalfHeight = boundTextElement.height / 2 + BOUND_TEXT_PADDING;
     tempCanvasContext.translate(shiftX, shiftY);
     // Clear the bound text area
     tempCanvasContext.clearRect(
-      -(boundTextElement.width / 2 + BOUND_TEXT_PADDING),
-      -(boundTextElement.height / 2 + BOUND_TEXT_PADDING),
-      (boundTextElement.width + BOUND_TEXT_PADDING * 2),
-      (boundTextElement.height + BOUND_TEXT_PADDING * 2),
+      shiftX - rectHalfWidth,
+      shiftX - rectHalfHeight,
+      shiftX + rectHalfWidth,
+      shiftX + rectHalfHeight,
     );
-    
+
     context.scale(1 / scale, 1 / scale);
     context.drawImage(tempCanvas, 0, 0, tempCanvas.width, tempCanvas.height);
     context.scale(1 * scale, 1 * scale);
